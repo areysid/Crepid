@@ -76,7 +76,7 @@ export default function CrepidDashboard() {
         className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl shadow-lg"
       >
         <h2 className="text-xl font-bold mb-4">Upload CSV Files</h2>
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+        <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex flex-col">
             <span className="text-sm font-medium mb-1">Roster CSV</span>
             <Input type="file" accept=".csv" onChange={(e) => setRosterFile(e.target.files[0])} />
@@ -96,6 +96,7 @@ export default function CrepidDashboard() {
             {loading ? "Uploading..." : "Upload & Compute"}
           </Button>
         </div>
+
       </motion.div>
 
       {data && (
@@ -127,6 +128,15 @@ export default function CrepidDashboard() {
             <SectionTable title="Appraisal Suggestions" items={data.appraisal} />
             <SectionTable title="Risk Flags" items={data.risks} />
           </motion.div>
+
+          <div className="flex justify-end mb-0">
+            <Button
+              variant="default"
+              onClick={() => window.open("/CREPIDSystemManual.pdf", "_blank")}
+            >
+              View Full Manual
+            </Button>
+          </div>
 
           {/* FAQs Section */}
           <FAQSection

@@ -1,0 +1,4 @@
+EmpID,Name,Role,Domain,SalaryINR,DateOfJoining
+1,Alice,Dev,Backend,800000,09-09-2021
+2,Bob,Dev,Backend,750000,01-04-2022
+3,Charlie,Dev,Backend,700000,01-07-2024

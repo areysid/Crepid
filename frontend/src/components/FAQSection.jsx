@@ -12,7 +12,7 @@ const FAQSection = ({ faqs }) => {
   };
 
   return (
-    <div className="mt-12 max-w-screen mx-0">
+    <div className="mt-6 max-w-screen mx-0">
       {/* Section Title */}
       <h2 className="text-xl font-bold mb-3 text-left">FAQs</h2>
 

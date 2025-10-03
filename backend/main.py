@@ -56,7 +56,8 @@ async def upload_csv(
     model = load_data(roster_path, activities_path, skills_path, settings)
     compute_metrics(model)
 
-    rebalance = suggest_rebalance(model, settings)
+    # rebalance = suggest_rebalance(model, settings)
+    rebalance = suggest_rebalance(model)
     training = suggest_training(model)
     hiring = hiring_decision(model)
     risks = risk_flags(model)

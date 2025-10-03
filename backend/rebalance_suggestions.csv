@@ -1,0 +1,22 @@
+EmpID,Activity,Points,OriginalFreq,AssignedFreq,ΔFreq,OriginalImp,AssignedImp,ΔImp,Suggestion
+1,Client Calls,2.0,6,3.33,-2.67,6,5.33,-0.67,Decrease Freq by 2.67; Decrease Imp by 0.67
+2,Client Calls,2.0,3,3.33,0.33,5,5.33,0.33,Increase Freq by 0.33; Increase Imp by 0.33
+3,Client Calls,2.0,1,3.33,2.33,5,5.33,0.33,Increase Freq by 2.33; Increase Imp by 0.33
+1,Code Review,0.5,6,1.5,-4.5,7,2.25,-4.75,Decrease Freq by 4.5; Decrease Imp by 4.75
+2,Code Review,1.5,5,4.5,-0.5,6,6.75,0.75,Decrease Freq by 0.5; Increase Imp by 0.75
+3,Code Review,2.0,1,6.0,5.0,5,9.0,4.0,Increase Freq by 5.0; Increase Imp by 4.0
+1,Documentation,1.5,4,3.0,-1.0,5,3.3,-1.7,Decrease Freq by 1.0; Decrease Imp by 1.7
+2,Documentation,1.5,3,3.0,0.0,3,3.3,0.3,Increase Imp by 0.3
+3,Documentation,2.0,3,4.0,1.0,3,4.4,1.4,Increase Freq by 1.0; Increase Imp by 1.4
+1,Quality Check,1.5,4,2.1,-1.9,5,3.9,-1.1,Decrease Freq by 1.9; Decrease Imp by 1.1
+2,Quality Check,2.0,2,2.8,0.8,5,5.2,0.2,Increase Freq by 0.8; Increase Imp by 0.2
+3,Quality Check,1.5,1,2.1,1.1,3,3.9,0.9,Increase Freq by 1.1; Increase Imp by 0.9
+1,Reporting,1.5,5,3.0,-2.0,7,5.67,-1.33,Decrease Freq by 2.0; Decrease Imp by 1.33
+2,Reporting,2.0,2,4.0,2.0,6,7.56,1.56,Increase Freq by 2.0; Increase Imp by 1.56
+3,Reporting,1.0,2,2.0,0.0,4,3.78,-0.22,Decrease Imp by 0.22
+1,Team Meeting,1.0,5,4.0,-1.0,4,4.0,0.0,Decrease Freq by 1.0
+2,Team Meeting,1.0,3,4.0,1.0,4,4.0,0.0,Increase Freq by 1.0
+3,Team Meeting,0.5,2,2.0,0.0,2,2.0,0.0,No change
+1,Training,2.0,5,7.33,2.33,6,9.33,3.33,Increase Freq by 2.33; Increase Imp by 3.33
+2,Training,0.5,4,1.83,-2.17,4,2.33,-1.67,Decrease Freq by 2.17; Decrease Imp by 1.67
+3,Training,0.5,2,1.83,-0.17,4,2.33,-1.67,Decrease Freq by 0.17; Decrease Imp by 1.67

@@ -109,58 +109,119 @@ def compute_metrics(model: Model) -> None:
 
 
 
-def suggest_rebalance(model: Model, settings: dict) -> list:
+# def suggest_rebalance(model: Model, settings: dict) -> list:
+#     """
+#     Suggest workload rebalancing proposals.
+#     Returns a list of dicts: fromEmp, toEmp, Activity, DeltaTIm
+#     """
+#     activities = model.activities.copy()
+#     proposals = []
+
+#     min_ti = settings["WorkloadMinTI"]
+#     max_ti = settings["WorkloadMaxTI"]
+
+#     # Current workload per employee
+#     emp_total_ti = activities.groupby("EmpID")["TIm"].sum().to_dict()
+
+#     # Process each activity
+#     for activity, df_act in activities.groupby("Activity"):
+#         # Donors: Points < 1.0 and Importance >= 4
+#         donors = df_act[(df_act["Points"] < 1.0) & (df_act["Importance"] >= 4)].copy()
+#         donors = donors.sort_values("Points")
+
+#         # Takers: Points >= 1.2
+#         takers = df_act[df_act["Points"] >= 1.2].copy()
+#         takers = takers.sort_values("Points", ascending=False)
+
+#         # Greedy transfer
+#         for _, donor in donors.iterrows():
+#             for _, taker in takers.iterrows():
+#                 from_emp = donor["EmpID"]
+#                 to_emp = taker["EmpID"]
+
+#                 # Max delta based on donor, taker, and settings
+#                 donor_ti = donor["TIm"]
+#                 taker_ti = emp_total_ti[to_emp]
+#                 max_transfer = min(10, donor_ti - 5, max_ti - taker_ti)
+#                 if max_transfer <= 0:
+#                     continue
+
+#                 # Record proposal
+#                 proposals.append({
+#                     "fromEmp": from_emp,
+#                     "toEmp": to_emp,
+#                     "Activity": activity,
+#                     "DeltaTIm": max_transfer
+#                 })
+
+#                 # Update totals for next iteration
+#                 emp_total_ti[from_emp] -= max_transfer
+#                 emp_total_ti[to_emp] += max_transfer
+#                 donor_ti -= max_transfer
+
+#     return proposals
+
+def suggest_rebalance(model: Model) -> list:
     """
-    Suggest workload rebalancing proposals.
-    Returns a list of dicts: fromEmp, toEmp, Activity, DeltaTIm
+    Suggest rebalance of Frequency and Importance for activities,
+    redistributing based on employee Points while preserving
+    original activity totals (bucket logic).
+    
+    Returns a list of dicts suitable for JSON output (table format).
     """
+
     activities = model.activities.copy()
-    proposals = []
+    rebalance_rows = []
 
-    min_ti = settings["WorkloadMinTI"]
-    max_ti = settings["WorkloadMaxTI"]
+    for activity, group in activities.groupby("Activity"):
+        total_freq = group["TimeFreq"].sum()
+        total_imp = group["Importance"].sum()
 
-    # Current workload per employee
-    emp_total_ti = activities.groupby("EmpID")["TIm"].sum().to_dict()
+        # Weighting factor = Points
+        total_points = group["Points"].sum()
 
-    # Process each activity
-    for activity, df_act in activities.groupby("Activity"):
-        # Donors: Points < 1.0 and Importance >= 4
-        donors = df_act[(df_act["Points"] < 1.0) & (df_act["Importance"] >= 4)].copy()
-        donors = donors.sort_values("Points")
+        for _, row in group.iterrows():
+            if total_points > 0:
+                freq_share = (row["Points"] / total_points) * total_freq
+                imp_share = (row["Points"] / total_points) * total_imp
+            else:
+                # fallback: split evenly if no one has points
+                freq_share = total_freq / len(group)
+                imp_share = total_imp / len(group)
 
-        # Takers: Points >= 1.2
-        takers = df_act[df_act["Points"] >= 1.2].copy()
-        takers = takers.sort_values("Points", ascending=False)
+            # Calculate deltas
+            delta_freq = round(freq_share - row["TimeFreq"], 2)
+            delta_imp = round(imp_share - row["Importance"], 2)
 
-        # Greedy transfer
-        for _, donor in donors.iterrows():
-            for _, taker in takers.iterrows():
-                from_emp = donor["EmpID"]
-                to_emp = taker["EmpID"]
+            # Human-readable suggestion
+            suggestions = []
+            if delta_freq > 0:
+                suggestions.append(f"Increase Frequency by {delta_freq}")
+            elif delta_freq < 0:
+                suggestions.append(f"Decrease Frequency by {abs(delta_freq)}")
 
-                # Max delta based on donor, taker, and settings
-                donor_ti = donor["TIm"]
-                taker_ti = emp_total_ti[to_emp]
-                max_transfer = min(10, donor_ti - 5, max_ti - taker_ti)
-                if max_transfer <= 0:
-                    continue
+            if delta_imp > 0:
+                suggestions.append(f"Increase Importance by {delta_imp}")
+            elif delta_imp < 0:
+                suggestions.append(f"Decrease Importance by {abs(delta_imp)}")
 
-                # Record proposal
-                proposals.append({
-                    "fromEmp": from_emp,
-                    "toEmp": to_emp,
-                    "Activity": activity,
-                    "DeltaTIm": max_transfer
-                })
+            suggestion_text = "; ".join(suggestions) if suggestions else "No change"
 
-                # Update totals for next iteration
-                emp_total_ti[from_emp] -= max_transfer
-                emp_total_ti[to_emp] += max_transfer
-                donor_ti -= max_transfer
+            rebalance_rows.append({
+                "EmpID": row["EmpID"],
+                "Activity": activity,
+                "Points": row["Points"],
+                "OriginalFreq": row["TimeFreq"],
+                "AssignedFreq": round(freq_share, 2),
+                "DeltaFreq": delta_freq,
+                "OriginalImp": row["Importance"],
+                "AssignedImp": round(imp_share, 2),
+                "DeltaImp": delta_imp,
+                "Suggestion": suggestion_text
+            })
 
-    return proposals
-
+    # Return as JSON-like list
+    return rebalance_rows
 
 
 

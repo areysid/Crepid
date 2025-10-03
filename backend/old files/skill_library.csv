@@ -1,0 +1,4 @@
+Keyword,SkillArea,Program,Hours,CostExternalPerPersonINR,CostInhousePerSessionINR,ExpectedLift,Notes
+Code Review,Software,CR Program,4,5000,3000,0.5,Improve code quality
+Unit Testing,Software,UT Program,3,4000,2500,0.4,Improve test coverage
+Documentation,Software,DOC Program,2,3000,2000,0.3,Improve documentation quality
