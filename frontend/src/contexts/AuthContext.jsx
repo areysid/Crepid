@@ -4,12 +4,13 @@ import { createContext, useContext, useState } from "react";
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // ✅ Read from sessionStorage (clears when browser closes)
   const [token, setToken] = useState(sessionStorage.getItem("token") || null);
+
+  const API_URL = import.meta.env.VITE_AUTH_API_URL;
 
   const login = async (email, password) => {
     try {
-      const res = await fetch("http://localhost:4000/login", {
+      const res = await fetch(`${API_URL}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -19,7 +20,6 @@ export const AuthProvider = ({ children }) => {
 
       const data = await res.json();
 
-      // ✅ Save token to sessionStorage instead of localStorage
       sessionStorage.setItem("token", data.token);
       setToken(data.token);
       return true;
@@ -34,7 +34,6 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
   };
 
-  // Derived user (used by PrivateRoute)
   const user = token ? { token } : null;
 
   return (
