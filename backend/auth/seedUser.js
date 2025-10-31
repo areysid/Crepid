@@ -12,6 +12,15 @@ const db = new sqlite3.Database("./database.sqlite", (err) => {
   console.log("✅ Connected to SQLite database");
 });
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE,
+    password_hash TEXT,
+    expires_at TEXT
+  )
+`);
+
 const EXPIRY_DAYS = 10;
 const expires_at = new Date(Date.now() + EXPIRY_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
