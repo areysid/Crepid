@@ -1,15 +1,33 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-import CrepidDashboard from './crepiddashboard'
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "sonner";
+import CrepidDashboard from "./crepiddashboard";
+import Login from "./Login";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <CrepidDashboard />
-  )
+function PrivateRoute({ children }) {
+  const { user } = useAuth();
+  return user ? children : <Navigate to="/login" />;
 }
 
-export default App
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Toaster position="top-center" richColors />
+        <Routes>
+          <Route
+            path="/"
+            element={
+              <PrivateRoute>
+                <CrepidDashboard />
+              </PrivateRoute>
+            }
+          />
+          <Route path="/login" element={<Login />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;

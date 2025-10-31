@@ -3,6 +3,26 @@ import pandas as pd
 from datetime import datetime
 
 # ------------------------------
+# Helpers
+# ------------------------------
+def normalize_points_scale(activities: pd.DataFrame, min_scale: float, max_scale: float) -> pd.DataFrame:
+    """
+    Converts a company's custom rating scale (e.g. 0–5, 0–7, 1–10)
+    to CREPID's internal 0–2 scale.
+
+    NormalizedPoints = ((RawPoints - min_scale) / (max_scale - min_scale)) * 2
+    """
+    if "Points" not in activities.columns:
+        raise ValueError("Input DataFrame must contain a 'Points' column.")
+    if max_scale <= min_scale:
+        raise ValueError("max_scale must be greater than min_scale.")
+
+    out = activities.copy()
+    out["NormalizedPoints"] = ((out["Points"] - min_scale) / (max_scale - min_scale)) * 2
+    out["NormalizedPoints"] = out["NormalizedPoints"].clip(0, 2)
+    return out
+
+# ------------------------------
 # Data container for the model
 # ------------------------------
 @dataclass
@@ -11,6 +31,9 @@ class Model:
     activities: pd.DataFrame
     skills: pd.DataFrame
     settings: dict
+    # Optional normalization settings used during upload
+    min_points_scale: float | None = None
+    max_points_scale: float | None = None
 
 # ------------------------------
 # Load + validate data
@@ -28,13 +51,12 @@ def load_data(roster_csv: str, activities_csv: str, skills_csv: str, settings: d
     if missing_ids:
         raise ValueError(f"Invalid EmpIDs in activities.csv: {missing_ids}")
 
-    # 2. Value ranges for TimeFreq, Importance, Points
+    # 2. Value ranges for TimeFreq, Importance
     if not activities["TimeFreq"].between(0, 7).all():
         raise ValueError("TimeFreq values must be between 0 and 7")
     if not activities["Importance"].between(0, 7).all():
         raise ValueError("Importance values must be between 0 and 7")
-    if not activities["Points"].between(0, 2).all():
-        raise ValueError("Points values must be between 0 and 2")
+    # Points can be on a custom scale; normalization may happen later
 
     # 3. Each employee must have 7–10 activities
     activity_counts = activities.groupby("EmpID").size()
@@ -85,8 +107,10 @@ def compute_metrics(model: Model) -> None:
     # Compute DollarValue
     activities["DollarValue"] = activities["RelWeight"] * activities["SalaryINR"]
 
+    # Use normalized points if present; else fall back to Points
+    points_col = "NormalizedPoints" if "NormalizedPoints" in activities.columns else "Points"
     # Compute NetValue
-    activities["NetValue"] = activities["DollarValue"] * activities["Points"]
+    activities["NetValue"] = activities["DollarValue"] * activities[points_col]
 
     # Compute EmpTotalTI per employee
     emp_total_ti = activities.groupby("EmpID")["TIm"].sum().to_dict()
@@ -104,9 +128,6 @@ def compute_metrics(model: Model) -> None:
     # Save back to model
     model.activities = activities
     print("✅ Metrics computed successfully!")
-
-
-
 
 
 # def suggest_rebalance(model: Model, settings: dict) -> list:
@@ -178,12 +199,14 @@ def suggest_rebalance(model: Model) -> list:
         total_imp = group["Importance"].sum()
 
         # Weighting factor = Points
-        total_points = group["Points"].sum()
+        # Weighting factor = Points (normalized if available)
+        points_col = "NormalizedPoints" if "NormalizedPoints" in group.columns else "Points"
+        total_points = group[points_col].sum()
 
         for _, row in group.iterrows():
             if total_points > 0:
-                freq_share = (row["Points"] / total_points) * total_freq
-                imp_share = (row["Points"] / total_points) * total_imp
+                freq_share = (row[points_col] / total_points) * total_freq
+                imp_share = (row[points_col] / total_points) * total_imp
             else:
                 # fallback: split evenly if no one has points
                 freq_share = total_freq / len(group)
@@ -210,7 +233,7 @@ def suggest_rebalance(model: Model) -> list:
             rebalance_rows.append({
                 "EmpID": row["EmpID"],
                 "Activity": activity,
-                "Points": row["Points"],
+                "Points": row[points_col],
                 "OriginalFreq": row["TimeFreq"],
                 "AssignedFreq": round(freq_share, 2),
                 "DeltaFreq": delta_freq,
@@ -219,6 +242,101 @@ def suggest_rebalance(model: Model) -> list:
                 "DeltaImp": delta_imp,
                 "Suggestion": suggestion_text
             })
+
+    # --- Compute cost/profit deltas per row and overall totals ---
+    # Current metrics snapshot
+    current_df = activities.copy()
+    # Ensure required columns exist
+    if "SalaryINR" not in current_df.columns:
+        current_df = current_df.merge(model.roster[["EmpID", "SalaryINR"]], on="EmpID", how="left")
+
+    current_df["TIm"] = current_df["TimeFreq"] * current_df["Importance"]
+    current_df["RelWeight"] = current_df.groupby("EmpID")["TIm"].transform(lambda x: x / x.sum() if x.sum() > 0 else 0)
+    current_df["DollarValue"] = current_df["RelWeight"] * current_df["SalaryINR"]
+    current_df["NetValue"] = current_df["DollarValue"] * current_df["Points"]
+    current_df["Profit"] = current_df["NetValue"] - current_df["DollarValue"]
+
+    # Build assigned version
+    assigned_df = activities.copy()
+    # Map of (EmpID, Activity) -> (AssignedFreq, AssignedImp)
+    assign_map = {(r["EmpID"], r["Activity"]): (r["AssignedFreq"], r["AssignedImp"]) for r in rebalance_rows}
+    # Apply assignments
+    mask_keys = list(assign_map.keys())
+    if mask_keys:
+        # Efficient vectorized update via index alignment
+        key_df = assigned_df[["EmpID", "Activity"]].apply(tuple, axis=1)
+        assigned_values = key_df.map(lambda k: assign_map.get(k, (None, None)))
+        # Split tuple series
+        assigned_df.loc[assigned_values.index, "_AssignedFreq"] = assigned_values.apply(lambda t: t[0])
+        assigned_df.loc[assigned_values.index, "_AssignedImp"] = assigned_values.apply(lambda t: t[1])
+        assigned_df["TimeFreq"] = assigned_df["_AssignedFreq"].fillna(assigned_df["TimeFreq"]).astype(float)
+        assigned_df["Importance"] = assigned_df["_AssignedImp"].fillna(assigned_df["Importance"]).astype(float)
+        assigned_df.drop(columns=["_AssignedFreq", "_AssignedImp"], inplace=True)
+
+    if "SalaryINR" not in assigned_df.columns:
+        assigned_df = assigned_df.merge(model.roster[["EmpID", "SalaryINR"]], on="EmpID", how="left")
+
+    assigned_df["TIm"] = assigned_df["TimeFreq"] * assigned_df["Importance"]
+    assigned_df["RelWeight"] = assigned_df.groupby("EmpID")["TIm"].transform(lambda x: x / x.sum() if x.sum() > 0 else 0)
+    assigned_df["DollarValue"] = assigned_df["RelWeight"] * assigned_df["SalaryINR"]
+    assigned_df["NetValue"] = assigned_df["DollarValue"] * assigned_df["Points"]
+    assigned_df["Profit"] = assigned_df["NetValue"] - assigned_df["DollarValue"]
+
+    # Merge to compute deltas per row on EmpID+Activity
+    merged = current_df.merge(
+        assigned_df[["EmpID", "Activity", "DollarValue", "NetValue", "Profit"]]
+            .rename(columns={
+                "DollarValue": "AssignedDollarValue",
+                "NetValue": "AssignedNetValue",
+                "Profit": "AssignedProfit",
+            }),
+        on=["EmpID", "Activity"],
+        how="left",
+        suffixes=("", "_curr")
+    )
+
+    merged = merged.rename(columns={
+        "DollarValue": "CurrentDollarValue",
+        "NetValue": "CurrentNetValue",
+        "Profit": "CurrentProfit",
+    })
+
+    per_row_deltas = merged[[
+        "EmpID", "Activity",
+        "CurrentDollarValue", "AssignedDollarValue",
+        "CurrentNetValue", "AssignedNetValue",
+        "CurrentProfit", "AssignedProfit",
+    ]].copy()
+    per_row_deltas["DeltaCostINR"] = (per_row_deltas["AssignedDollarValue"] - per_row_deltas["CurrentDollarValue"]).round(2)
+    per_row_deltas["DeltaProfitINR"] = (per_row_deltas["AssignedProfit"] - per_row_deltas["CurrentProfit"]).round(2)
+
+    # Index for quick lookup
+    delta_idx = per_row_deltas.set_index(["EmpID", "Activity"])
+
+    # Attach deltas to rebalance rows
+    for r in rebalance_rows:
+        key = (r["EmpID"], r["Activity"])
+        if key in delta_idx.index:
+            d = delta_idx.loc[key]
+            r["CurrentCostINR"] = round(float(d["CurrentDollarValue"]), 2)
+            r["AssignedCostINR"] = round(float(d["AssignedDollarValue"]), 2)
+            r["DeltaCostINR"] = round(float(d["DeltaCostINR"]), 2)
+            r["CurrentProfitINR"] = round(float(d["CurrentProfit"]), 2)
+            r["AssignedProfitINR"] = round(float(d["AssignedProfit"]), 2)
+            r["DeltaProfitINR"] = round(float(d["DeltaProfitINR"]), 2)
+
+    # Overall totals
+    totals = {
+        "TotalCostBeforeINR": round(float(current_df["DollarValue"].sum()), 2),
+        "TotalCostAfterINR": round(float(assigned_df["DollarValue"].sum()), 2),
+        "TotalProfitBeforeINR": round(float((current_df["Profit"]).sum()), 2),
+        "TotalProfitAfterINR": round(float((assigned_df["Profit"]).sum()), 2),
+    }
+    totals["CostChangeINR"] = round(totals["TotalCostAfterINR"] - totals["TotalCostBeforeINR"], 2)
+    totals["ProfitChangeINR"] = round(totals["TotalProfitAfterINR"] - totals["TotalProfitBeforeINR"], 2)
+
+    # Expose on model for API to include
+    setattr(model, "rebalance_totals", totals)
 
     # Return as JSON-like list
     return rebalance_rows
@@ -240,8 +358,9 @@ def suggest_training(model: Model) -> pd.DataFrame:
     for emp_id, emp_data in activities.groupby("EmpID"):
         emp_salary = emp_data["SalaryINR"].iloc[0]
 
-        # Deficits: activities where Points < 2
-        deficits = emp_data[emp_data["Points"] < 2]
+        # Deficits: activities where effective points < 2 on 0–2 internal scale
+        eff_points_col = "NormalizedPoints" if "NormalizedPoints" in emp_data.columns else "Points"
+        deficits = emp_data[emp_data[eff_points_col] < 2]
 
         for _, deficit in deficits.iterrows():
             keyword = deficit["Activity"]  # assumes activity name aligns with skill_library["Keyword"]
@@ -553,3 +672,64 @@ def suggest_appraisal(model: Model) -> pd.DataFrame:
     df = pd.DataFrame(results)
     print("✅ Appraisal suggestions generated!")
     return df
+
+# ------------------------------
+# Snapshot for revert
+# ------------------------------
+_ORIGINAL_ACTIVITIES = None
+
+def snapshot_activities(model: Model):
+    """Save a copy of original activities to allow revert."""
+    global _ORIGINAL_ACTIVITIES
+    _ORIGINAL_ACTIVITIES = model.activities.copy()
+    print("📌 Original activities snapshot saved.")
+
+def revert_activities(model: Model):
+    """Revert activities to original snapshot."""
+    global _ORIGINAL_ACTIVITIES
+    if _ORIGINAL_ACTIVITIES is not None:
+        model.activities = _ORIGINAL_ACTIVITIES.copy()
+        # Re-merge SalaryINR to ensure it's available for compute_metrics
+        # if "SalaryINR" not in model.activities.columns:
+        #     model.activities = model.activities.merge(
+        #         model.roster[["EmpID", "SalaryINR"]], on="EmpID", how="left"
+        #     )
+        print("↩️ Activities reverted to original data.")
+    else:
+        print("⚠️ No snapshot found. Cannot revert.")
+
+# ------------------------------
+# Apply rebalance suggestions
+# ------------------------------
+def apply_rebalance_suggestions(model: Model, rebalance_rows: list, custom_changes: bool = False):
+    """
+    Apply rebalance suggestions to model.activities without losing other columns.
+    """
+    # Ensure TimeFreq and Importance can hold floats
+    model.activities["TimeFreq"] = model.activities["TimeFreq"].astype(float)
+    model.activities["Importance"] = model.activities["Importance"].astype(float)
+
+    for row in rebalance_rows:
+        emp_id = row["EmpID"]
+        activity = row["Activity"]
+
+        mask = (model.activities["EmpID"] == emp_id) & (model.activities["Activity"] == activity)
+        if mask.sum() == 0:
+            continue
+
+        if custom_changes:
+            if "DeltaFreq" in row:
+                model.activities.loc[mask, "TimeFreq"] += row["DeltaFreq"]
+            if "DeltaImp" in row:
+                model.activities.loc[mask, "Importance"] += row["DeltaImp"]
+        else:
+            model.activities.loc[mask, "TimeFreq"] = row["AssignedFreq"]
+            model.activities.loc[mask, "Importance"] = row["AssignedImp"]
+
+    # --- Added this block to fix the KeyError ---
+    model.activities = model.activities.merge(
+        model.roster[["EmpID", "SalaryINR"]], on="EmpID", how="left"
+    )
+
+    print("✅ Rebalance suggestions applied. Recomputing metrics...")
+    compute_metrics(model)

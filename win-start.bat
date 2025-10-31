@@ -1,7 +1,9 @@
 @echo off
 echo Starting Backend...
 cd backend
+cd fastapi
 start cmd /k "uvicorn main:app --reload --host 127.0.0.1 --port 8000"
+cd ..
 cd ..
 
 echo Starting Frontend...
