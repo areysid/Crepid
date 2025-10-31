@@ -1,17 +1,17 @@
 // backend/auth/seedUsers.js
 import sqlite3 from "sqlite3";
 import bcrypt from "bcrypt";
-import fs from "fs";
 import crypto from "crypto";
 
 const db = new sqlite3.Database("./database.sqlite", (err) => {
   if (err) {
-    console.error("Database error:", err);
+    console.error("❌ Database error:", err);
     process.exit(1);
   }
   console.log("✅ Connected to SQLite database");
 });
 
+// Ensure table exists
 db.run(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,13 +26,27 @@ const expires_at = new Date(Date.now() + EXPIRY_DAYS * 24 * 60 * 60 * 1000).toIS
 
 const users = Array.from({ length: 10 }, (_, i) => ({
   email: `crepid@user${i + 1}.com`,
-  password: crypto.randomBytes(6).toString("base64url"), // random 8–10 char safe password
+  password: crypto.randomBytes(6).toString("base64url"),
 }));
 
-(async () => {
-  const credentials = [];
+// Check if seeding is needed
+db.all("SELECT email, expires_at FROM users", async (err, rows) => {
+  if (err) {
+    console.error("❌ Error checking users:", err);
+    db.close();
+    return;
+  }
 
-  try {
+  const now = new Date();
+  const hasExpiredUsers = rows.some((u) => new Date(u.expires_at) < now);
+
+  // Condition 1: no users
+  // Condition 2: all users expired
+  if (rows.length === 0 || hasExpiredUsers) {
+    console.log("⚙️ Seeding users...");
+
+    const credentials = [];
+
     for (const user of users) {
       const password_hash = await bcrypt.hash(user.password, 10);
 
@@ -46,7 +60,8 @@ const users = Array.from({ length: 10 }, (_, i) => ({
       `,
         [user.email, password_hash, expires_at],
         (err) => {
-          if (err) console.error(`❌ Error adding ${user.email}:`, err.message);
+          if (err)
+            console.error(`❌ Error adding ${user.email}:`, err.message);
           else console.log(`✅ Added/Updated ${user.email}`);
         }
       );
@@ -55,13 +70,13 @@ const users = Array.from({ length: 10 }, (_, i) => ({
     }
 
     setTimeout(() => {
-      fs.writeFileSync("seeded_credentials.txt", credentials.join("\n"));
-      console.log("\n📄 Credentials saved to seeded_credentials.txt");
+      console.log("\n📋 User credentials:");
+      console.log(credentials.join("\n"));
       console.log(`🕒 All users expire on ${expires_at}`);
       db.close();
     }, 1000);
-  } catch (err) {
-    console.error("Seeding error:", err);
+  } else {
+    console.log("✅ Users already exist and are still valid — skipping seeding.");
     db.close();
   }
-})();
+});
