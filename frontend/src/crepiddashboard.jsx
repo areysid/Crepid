@@ -274,9 +274,20 @@ Client Communication,Sales,CC Program,4,6000,3500,0.5,Improve client interaction
             </span>
           </div>
 
-          <Button onClick={handleUpload} disabled={loading}>
+          {/* <Button onClick={handleUpload} disabled={loading}>
             {loading ? "Uploading..." : "Upload & Compute"}
-          </Button>
+          </Button> */}
+          <div className="flex flex-col items-center gap-3">
+  <Button onClick={handleUpload} disabled={loading}>
+    {loading ? "Uploading..." : "Upload & Compute"}
+  </Button>
+
+  {loading && (
+    <p className="text-sm text-gray-500 animate-pulse">
+      ⏳ Please wait, your files are being processed...
+    </p>
+  )}
+</div>
         </div>
       </motion.div>
 
