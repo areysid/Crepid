@@ -1,5 +1,9 @@
 export const uploadCSV = async (rosterFile, activitiesFile, skillFile, minScale, maxScale) => {
   const formData = new FormData();
+
+  const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
   formData.append("roster", rosterFile);
   formData.append("activities", activitiesFile);
   formData.append("skills", skillFile);
@@ -8,7 +12,7 @@ export const uploadCSV = async (rosterFile, activitiesFile, skillFile, minScale,
     formData.append("max_points_scale", String(maxScale));
   }
 
-  const res = await fetch("http://localhost:8000/api/upload-csv", {
+  const res = await fetch(`${API_BASE_URL}/api/upload-csv`, {
     method: "POST",
     body: formData,
   });
