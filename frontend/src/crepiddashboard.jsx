@@ -15,6 +15,10 @@ export default function CrepidDashboard() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
 
+  const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+
+
   // Scale state — default values set
   const [minScale, setMinScale] = useState("0");
   const [maxScale, setMaxScale] = useState("2");
@@ -59,7 +63,7 @@ export default function CrepidDashboard() {
     }
 
     try {
-      const res = await fetch("http://localhost:8000/api/upload-csv", {
+      const res = await fetch(`${API_BASE_URL}/api/upload-csv`, {
         method: "POST",
         body: formData,
       });
@@ -108,7 +112,7 @@ export default function CrepidDashboard() {
     if (!data?.rebalance || data.rebalance.length === 0)
       return alert("No rebalance suggestions available!");
     try {
-      const res = await fetch("http://localhost:8000/api/apply-rebalance", {
+      const res = await fetch(`${API_BASE_URL}/api/apply-rebalance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rebalance_rows: data.rebalance, custom_changes: false }),
@@ -283,9 +287,9 @@ Client Communication,Sales,CC Program,4,6000,3500,0.5,Improve client interaction
             <Button variant="default" onClick={handleApplyRebalance}>
               Apply Rebalance
             </Button>
-            <Button variant="outline" onClick={handleRevertActivities}>
+            {/* <Button variant="outline" onClick={handleRevertActivities}>
               Revert Activities
-            </Button>
+            </Button> */}
           </div>
 
           <div className="flex justify-end mb-2">
