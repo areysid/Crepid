@@ -27,133 +27,65 @@ export default function CrepidDashboard() {
   const [currency, setCurrency] = useState("INR");
   const usdRate = 83; // Example rate
 
-  // const handleUpload = async () => {
-  //   if (!rosterFile || !activitiesFile || !skillsFile) {
-  //     alert("Please select all three files!");
-  //     return;
-  //   }
-
-  //   if (minScale === "" || maxScale === "") {
-  //     console.log("No custom points scale provided. The system will auto-detect min/max from CSV.");
-  //   }
-
-  //   // Parse scales
-  //   const min = minScale === "" ? undefined : parseFloat(minScale);
-  //   const max = maxScale === "" ? undefined : parseFloat(maxScale);
-
-  //   // Validate scales
-  //   if ((min !== undefined && isNaN(min)) || (max !== undefined && isNaN(max))) {
-  //     alert("Min or Max scale is invalid");
-  //     return;
-  //   }
-  //   if (min !== undefined && max !== undefined && min >= max) {
-  //     alert("Min scale must be less than Max scale");
-  //     return;
-  //   }
-
-  //   setLoading(true);
-  //   const formData = new FormData();
-  //   formData.append("roster", rosterFile);
-  //   formData.append("activities", activitiesFile);
-  //   formData.append("skills", skillsFile);
-
-  //   if (min !== undefined && max !== undefined) {
-  //     formData.append("min_points_scale", String(min));
-  //     formData.append("max_points_scale", String(max));
-  //   }
-
-  //   try {
-  //     const res = await fetch(`${API_BASE_URL}/api/upload-csv`, {
-  //       method: "POST",
-  //       body: formData,
-  //     });
-  //     if (!res.ok) {
-  //       let msg = `Server responded with status ${res.status}`;
-  //       try {
-  //         const err = await res.json();
-  //         msg = err?.detail?.message || err?.detail || msg;
-  //         if (err?.detail?.violations_count) {
-  //           console.error("Scale violations sample:", err.detail.violations_sample);
-  //         }
-  //       } catch {}
-  //       throw new Error(msg);
-  //     }
-  //     const result = await res.json();
-  //     setData(result);
-  //   } catch (err) {
-  //     console.error("Upload failed:", err);
-  //     alert(String(err.message || err));
-  //   }
-  //   setLoading(false);
-  // };
-
   const handleUpload = async () => {
-  if (!rosterFile || !activitiesFile || !skillsFile) {
-    alert("Please select all three files!");
-    return;
-  }
-
-  if (minScale === "" || maxScale === "") {
-    console.log("No custom points scale provided. The system will auto-detect min/max from CSV.");
-  }
-
-  // Parse scales
-  const min = minScale === "" ? undefined : parseFloat(minScale);
-  const max = maxScale === "" ? undefined : parseFloat(maxScale);
-
-  // Validate scales
-  if ((min !== undefined && isNaN(min)) || (max !== undefined && isNaN(max))) {
-    alert("Min or Max scale is invalid");
-    return;
-  }
-  if (min !== undefined && max !== undefined && min >= max) {
-    alert("Min scale must be less than Max scale");
-    return;
-  }
-
-  setLoading(true);
-  const formData = new FormData();
-  formData.append("roster", rosterFile);
-  formData.append("activities", activitiesFile);
-  formData.append("skills", skillsFile);
-
-  if (min !== undefined && max !== undefined) {
-    formData.append("min_points_scale", String(min));
-    formData.append("max_points_scale", String(max));
-  }
-
-  // 🔔 Show loading toast
-  const toastId = toast.loading("Please wait, your files are being processed...");
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/upload-csv`, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!res.ok) {
-      let msg = `Server responded with status ${res.status}`;
-      try {
-        const err = await res.json();
-        msg = err?.detail?.message || err?.detail || msg;
-        if (err?.detail?.violations_count) {
-          console.error("Scale violations sample:", err.detail.violations_sample);
-        }
-      } catch {}
-      throw new Error(msg);
+    if (!rosterFile || !activitiesFile || !skillsFile) {
+      alert("Please select all three files!");
+      return;
     }
 
-    const result = await res.json();
-    setData(result);
-    toast.success("Upload complete! Files processed successfully.");
-  } catch (err) {
-    console.error("Upload failed:", err);
-    toast.error(`Upload failed: ${err.message || err}`);
-  } finally {
-    toast.dismiss(toastId); // remove loading toast
+    if (minScale === "" || maxScale === "") {
+      console.log("No custom points scale provided. The system will auto-detect min/max from CSV.");
+    }
+
+    // Parse scales
+    const min = minScale === "" ? undefined : parseFloat(minScale);
+    const max = maxScale === "" ? undefined : parseFloat(maxScale);
+
+    // Validate scales
+    if ((min !== undefined && isNaN(min)) || (max !== undefined && isNaN(max))) {
+      alert("Min or Max scale is invalid");
+      return;
+    }
+    if (min !== undefined && max !== undefined && min >= max) {
+      alert("Min scale must be less than Max scale");
+      return;
+    }
+
+    setLoading(true);
+    const formData = new FormData();
+    formData.append("roster", rosterFile);
+    formData.append("activities", activitiesFile);
+    formData.append("skills", skillsFile);
+
+    if (min !== undefined && max !== undefined) {
+      formData.append("min_points_scale", String(min));
+      formData.append("max_points_scale", String(max));
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/upload-csv`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        let msg = `Server responded with status ${res.status}`;
+        try {
+          const err = await res.json();
+          msg = err?.detail?.message || err?.detail || msg;
+          if (err?.detail?.violations_count) {
+            console.error("Scale violations sample:", err.detail.violations_sample);
+          }
+        } catch {}
+        throw new Error(msg);
+      }
+      const result = await res.json();
+      setData(result);
+    } catch (err) {
+      console.error("Upload failed:", err);
+      alert(String(err.message || err));
+    }
     setLoading(false);
-  }
-};
+  };
 
   const formatCurrency = (amount) => {
     if (amount == null) return "";
