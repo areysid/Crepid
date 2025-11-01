@@ -17,19 +17,24 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  e.preventDefault();
+  setLoading(true);
 
-    const success = await login(email, password);
-    setLoading(false);
+  // Show "please wait" message while Render spins up
+  const waitingToast = toast.loading("Please wait, this may take a moment...");
 
-    if (success) {
-      toast.success("Login successful!");
-      navigate("/");
-    } else {
-      toast.error("Invalid email or password");
-    }
-  };
+  const success = await login(email, password);
+
+  setLoading(false);
+  toast.dismiss(waitingToast); // remove the waiting message
+
+  if (success) {
+    toast.success("Login successful!");
+    navigate("/");
+  } else {
+    toast.error("Invalid email or password");
+  }
+};
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
