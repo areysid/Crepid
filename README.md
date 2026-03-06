@@ -1,4 +1,4 @@
-# Comprehensive Documentation
+# Developer Documentation
 
 ## Overview
 Crepid is an innovative solution designed to streamline project management and collaboration within development teams.
