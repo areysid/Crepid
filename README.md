@@ -12,9 +12,10 @@ Crepid is an innovative solution designed to streamline project management and c
 ## Architecture
 The application is built on a microservices architecture, allowing for scalability and maintainability. Each service operates independently, communicating via REST APIs.
 
-## Deployment Links
-- [Staging Environment](https://staging-crepid.example.com)
-- [Production Environment](https://crepid.example.com)
+## All Links
+- [Deployement Link](https://crepid.vercel.app/)
+- [Backed FastAPI](https://crepid-backend-fastapi.onrender.com/)
+- [Backend Auth](https://crepid-backend-auth.onrender.com)
 
 ## Getting Started
 1. Clone the repository: `git clone https://github.com/areysid/Crepid`
@@ -22,7 +23,7 @@ The application is built on a microservices architecture, allowing for scalabili
 3. Start the application: `npm start`
 
 ## API Documentation
-The API allows developers to interact with Crepid's functionalities programmatically. Visit [API Docs](https://api.crepid.example.com/docs) for more information.
+The API allows developers to interact with Crepid's functionalities programmatically. Visit [API Docs](https://crepid-backend-fastapi.onrender.com/docs) for more information.
 
 ## Authentication
 Crepid uses JWT for authentication. Users must obtain a token by logging in to access protected routes.
@@ -38,6 +39,3 @@ To contribute to Crepid, follow these guidelines:
 1. Fork the repository
 2. Create a new feature branch
 3. Push your changes and create a pull request.
-
-## Contact
-For any inquiries, please reach out to [support@crepid.example.com](mailto:support@crepid.example.com).
