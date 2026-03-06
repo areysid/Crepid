@@ -550,7 +550,7 @@ def risk_flags(model: Model) -> pd.DataFrame:
 
         # Flexible parsing for DateOfJoining
         doj_str = emp_roster["DateOfJoining"]
-        for fmt in ("%d/%m/%Y", "%d-%m-%Y"):
+        for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y"):
             try:
                 doj = datetime.strptime(doj_str, fmt)
                 break
@@ -637,7 +637,7 @@ def suggest_appraisal(model: Model) -> pd.DataFrame:
 
         # --- Calculate tenure (YearsWorked) ---
         doj_str = emp_roster["DateOfJoining"]
-        for fmt in ("%d/%m/%Y", "%d-%m-%Y"):
+        for fmt in ("%d/%m/%Y", "%d-%m-%Y", "%d/%m/%y"):
             try:
                 doj = datetime.strptime(doj_str, fmt)
                 break
